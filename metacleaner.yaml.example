@@ -1,0 +1,56 @@
+jpeg_quality: 85
+# Higher min quality reduces banding in gradients/shadows (pngquant palette mode).
+# speed: 1 = best quality (slower), 11 = fastest.
+png_quality: "92-100"
+png_speed: 1
+# Set true for pixel-perfect PNGs (oxipng, no palette quantization).
+png_lossless: false
+webp_quality: 80
+video_crf: 24
+video_preset: fast
+# WebM uses VP9 (0 = slowest/best, 5 = fastest).
+video_webm_cpu_used: 2
+
+strip_metadata: true
+skip_if_larger: true
+subprocess_timeout: 300
+
+exclude_dirs:
+  - .git
+  - .svn
+  - .hg
+  - node_modules
+  - build
+  - dist
+  - out
+  - .dart_tool
+  - Pods
+  - DerivedData
+  - .gradle
+  - vendor
+  - __pycache__
+  - .idea
+  - .vscode
+  - Carthage
+
+exclude_globs:
+  - "**/test/**"
+  - "**/tests/**"
+  - "**/fixtures/**"
+
+extensions:
+  images:
+    - .jpg
+    - .jpeg
+    - .png
+    - .webp
+    - .heic
+    - .heif
+  svg:
+    - .svg
+  videos:
+    - .mp4
+    - .mov
+    - .m4v
+    - .webm
+    - .mkv

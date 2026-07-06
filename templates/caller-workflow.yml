@@ -1,0 +1,39 @@
+# Copy this file to your project as:
+#   .github/workflows/optimize-media.yml
+#
+# Replace @ORG@ and @METACLEANER@ with your GitHub organization and repo name.
+
+name: Optimize media
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**.jpg'
+      - '**.jpeg'
+      - '**.png'
+      - '**.webp'
+      - '**.heic'
+      - '**.heif'
+      - '**.svg'
+      - '**.mp4'
+      - '**.mov'
+      - '**.m4v'
+      - '**.webm'
+      - '**.mkv'
+
+concurrency:
+  group: optimize-media-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  optimize:
+    if: github.actor != 'github-actions[bot]'
+    uses: @ORG@/@METACLEANER@/.github/workflows/optimize-media.yml@main
+    permissions:
+      contents: write
+    with:
+      metacleaner_repository: '@ORG@/@METACLEANER@'
+      metacleaner_ref: main
+      process_videos: true
+      commit_message: 'chore: optimize media assets'

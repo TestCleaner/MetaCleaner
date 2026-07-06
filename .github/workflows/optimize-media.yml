@@ -1,0 +1,182 @@
+name: Optimize media (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      metacleaner_repository:
+        description: GitHub repository that contains MetaCleaner (org/Repo)
+        required: true
+        type: string
+      metacleaner_ref:
+        description: Branch, tag, or SHA of MetaCleaner to use
+        required: false
+        type: string
+        default: main
+      process_videos:
+        description: Whether to optimize video files
+        required: false
+        type: boolean
+        default: true
+      commit_message:
+        description: Commit message for optimized media
+        required: false
+        type: string
+        default: chore: optimize media assets
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Collect changed media files
+        id: media
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          mapfile -t CHANGED < <(
+            git diff --name-only --diff-filter=ACMRT "$BASE_SHA" "$HEAD_SHA" \
+              | grep -E '\.(jpe?g|png|webp|heic|heif|svg|mp4|mov|m4v|webm|mkv)$' \
+              || true
+          )
+
+          if [ "${{ inputs.process_videos }}" != "true" ]; then
+            FILTERED=()
+            for f in "${CHANGED[@]}"; do
+              case "$f" in
+                *.mp4|*.mov|*.m4v|*.webm|*.mkv) continue ;;
+                *) FILTERED+=("$f") ;;
+              esac
+            done
+            CHANGED=("${FILTERED[@]}")
+          fi
+
+          if [ ${#CHANGED[@]} -eq 0 ]; then
+            echo "has_files=false" >> "$GITHUB_OUTPUT"
+            echo "No changed media files in this PR."
+            exit 0
+          fi
+
+          printf '%s\n' "${CHANGED[@]}"
+          {
+            echo "has_files=true"
+            echo "files<<EOF"
+            printf '%s\n' "${CHANGED[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout MetaCleaner
+        if: steps.media.outputs.has_files == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.metacleaner_repository }}
+          ref: ${{ inputs.metacleaner_ref }}
+          path: .metacleaner-tool
+
+      - uses: actions/setup-python@v5
+        if: steps.media.outputs.has_files == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: .metacleaner-tool/requirements.txt
+
+      - uses: actions/setup-node@v4
+        if: steps.media.outputs.has_files == 'true'
+        with:
+          node-version: "20"
+
+      - name: Cache apt packages
+        if: steps.media.outputs.has_files == 'true'
+        uses: actions/cache@v4
+        id: cache-apt
+        with:
+          path: .ci/apt-cache
+          key: ${{ runner.os }}-apt-metacleaner-v1
+
+      - name: Cache npm
+        if: steps.media.outputs.has_files == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-svgo-v1
+
+      - name: Install dependencies
+        if: steps.media.outputs.has_files == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci/apt-cache
+
+          install_apt() {
+            sudo apt-get update
+            sudo apt-get install -y \
+              libimage-exiftool-perl \
+              ffmpeg \
+              pngquant \
+              webp \
+              python3-pip
+            sudo apt-get install -y mozjpeg 2>/dev/null \
+              || sudo apt-get install -y libmozjpeg-progs 2>/dev/null \
+              || true
+          }
+
+          save_apt_cache() {
+            shopt -s nullglob
+            rm -f .ci/apt-cache/*.deb
+            for pattern in \
+              "libimage-exiftool-perl_*.deb" \
+              "ffmpeg_*.deb" \
+              "pngquant_*.deb" \
+              "webp_*.deb" \
+              "python3-pip_*.deb" \
+              "mozjpeg_*.deb" \
+              "libmozjpeg-progs_*.deb"; do
+              cp /var/cache/apt/archives/${pattern} .ci/apt-cache/ 2>/dev/null || true
+            done
+            shopt -u nullglob
+          }
+
+          if [ "${{ steps.cache-apt.outputs.cache-hit }}" = "true" ] && compgen -G ".ci/apt-cache/*.deb" > /dev/null; then
+            echo "Restoring apt packages from cache"
+            sudo dpkg -i .ci/apt-cache/*.deb || {
+              sudo apt-get update
+              sudo apt-get install -fy
+            }
+          else
+            install_apt
+            save_apt_cache
+          fi
+
+          pip install -r .metacleaner-tool/requirements.txt
+          npm install -g svgo
+
+      - name: Run MetaCleaner
+        if: steps.media.outputs.has_files == 'true'
+        shell: bash
+        env:
+          MEDIA_FILES: ${{ steps.media.outputs.files }}
+        run: |
+          set -euo pipefail
+          mapfile -t FILES <<< "${MEDIA_FILES}"$'\n'
+          chmod +x .metacleaner-tool/metacleaner.sh
+          .metacleaner-tool/metacleaner.sh . --files "${FILES[@]}" -j 4 --verbose
+
+      - name: Commit optimized media
+        if: steps.media.outputs.has_files == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: ${{ inputs.commit_message }}
+          commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          branch: ${{ github.head_ref }}
