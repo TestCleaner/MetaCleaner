@@ -21,7 +21,7 @@ on:
         description: Commit message for optimized media
         required: false
         type: string
-        default: chore: optimize media assets
+        default: "chore: optimize media assets"
 
 jobs:
   optimize:
