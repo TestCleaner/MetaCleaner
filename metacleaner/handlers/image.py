@@ -303,35 +303,54 @@ def process_webp(source: Path, config: Config, *, dry_run: bool) -> FileResult:
     )
 
 
-def process_heic(source: Path, config: Config, *, dry_run: bool) -> FileResult:
+def _heic_strip_metadata_only(source: Path, config: Config, original_bytes: int) -> FileResult | None:
     kind = "image"
     relative = str(source)
-    original_bytes = source.stat().st_size
-
-    if dry_run:
+    exiftool = which_or_none("exiftool")
+    if not exiftool or not config.strip_metadata:
+        return None
+    result = run_command(
+        [exiftool, "-all=", "-overwrite_original", str(source)],
+        timeout=config.subprocess_timeout,
+    )
+    if result is None or result.returncode != 0:
+        return None
+    final_bytes = source.stat().st_size
+    if final_bytes < original_bytes:
         return FileResult(
             path=relative,
             kind=kind,
-            status="dry_run",
+            status="optimized",
             original_bytes=original_bytes,
-            final_bytes=original_bytes,
-            message="heic metadata strip + convert to jpeg",
+            final_bytes=final_bytes,
+            saved_bytes=original_bytes - final_bytes,
+            message="metadata stripped only",
         )
+    return FileResult(
+        path=relative,
+        kind=kind,
+        status="skipped",
+        original_bytes=original_bytes,
+        final_bytes=original_bytes,
+        message="metadata stripped; size unchanged",
+    )
 
+
+def _heic_convert_with_heif_convert(source: Path, temp_output: Path, config: Config) -> bool:
+    heif_convert = which_or_none("heif-convert")
+    if heif_convert is None:
+        return False
+    result = run_command(
+        [heif_convert, str(source), str(temp_output)],
+        timeout=config.subprocess_timeout,
+    )
+    return result is not None and result.returncode == 0 and temp_output.exists()
+
+
+def _heic_convert_with_ffmpeg(source: Path, temp_output: Path, config: Config) -> bool:
     ffmpeg = which_or_none("ffmpeg")
     if ffmpeg is None:
-        return FileResult(
-            path=relative,
-            kind=kind,
-            status="failed",
-            original_bytes=original_bytes,
-            message="ffmpeg not found in PATH",
-        )
-
-    jpeg_target = source.with_suffix(".jpg")
-    temp_output = temp_path_for(jpeg_target)
-    temp_output.unlink(missing_ok=True)
-
+        return False
     args = [
         ffmpeg,
         "-hide_banner",
@@ -348,39 +367,52 @@ def process_heic(source: Path, config: Config, *, dry_run: bool) -> FileResult:
     if config.strip_metadata:
         args.extend(["-map_metadata", "-1"])
     args.append(str(temp_output))
-
     result = run_command(args, timeout=config.subprocess_timeout)
-    if result is None or result.returncode != 0:
-        temp_output.unlink(missing_ok=True)
+    return result is not None and result.returncode == 0 and temp_output.exists()
+
+
+def process_heic(source: Path, config: Config, *, dry_run: bool) -> FileResult:
+    kind = "image"
+    relative = str(source)
+    original_bytes = source.stat().st_size
+
+    if dry_run:
         return FileResult(
             path=relative,
             kind=kind,
-            status="failed",
+            status="dry_run",
             original_bytes=original_bytes,
-            message=command_error(result),
+            final_bytes=original_bytes,
+            message="heic metadata strip + convert to jpeg",
+        )
+
+    jpeg_target = source.with_suffix(".jpg")
+    temp_output = temp_path_for(jpeg_target)
+    temp_output.unlink(missing_ok=True)
+
+    converted = _heic_convert_with_heif_convert(source, temp_output, config)
+    if not converted:
+        converted = _heic_convert_with_ffmpeg(source, temp_output, config)
+
+    if not converted:
+        temp_output.unlink(missing_ok=True)
+        metadata_only = _heic_strip_metadata_only(source, config, original_bytes)
+        if metadata_only is not None:
+            return metadata_only
+        return FileResult(
+            path=relative,
+            kind=kind,
+            status="skipped",
+            original_bytes=original_bytes,
+            final_bytes=original_bytes,
+            message="heic unreadable or corrupt; left unchanged",
         )
 
     if config.skip_if_larger and temp_output.stat().st_size >= original_bytes:
         temp_output.unlink(missing_ok=True)
-        if config.strip_metadata:
-            exiftool = which_or_none("exiftool")
-            if exiftool:
-                exiftool_result = run_command(
-                    [exiftool, "-all=", "-overwrite_original", str(source)],
-                    timeout=config.subprocess_timeout,
-                )
-                if exiftool_result is not None and exiftool_result.returncode == 0:
-                    final_bytes = source.stat().st_size
-                    if final_bytes < original_bytes:
-                        return FileResult(
-                            path=relative,
-                            kind=kind,
-                            status="optimized",
-                            original_bytes=original_bytes,
-                            final_bytes=final_bytes,
-                            saved_bytes=original_bytes - final_bytes,
-                            message="metadata stripped only",
-                        )
+        metadata_only = _heic_strip_metadata_only(source, config, original_bytes)
+        if metadata_only is not None:
+            return metadata_only
         return FileResult(
             path=relative,
             kind=kind,

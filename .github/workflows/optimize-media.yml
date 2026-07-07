@@ -126,7 +126,8 @@ jobs:
               ffmpeg \
               pngquant \
               webp \
-              python3-pip
+              python3-pip \
+              libheif-examples
             sudo apt-get install -y mozjpeg 2>/dev/null \
               || sudo apt-get install -y libmozjpeg-progs 2>/dev/null \
               || true
@@ -141,6 +142,8 @@ jobs:
               "pngquant_*.deb" \
               "webp_*.deb" \
               "python3-pip_*.deb" \
+              "libheif-examples_*.deb" \
+              "libheif1_*.deb" \
               "mozjpeg_*.deb" \
               "libmozjpeg-progs_*.deb"; do
               cp /var/cache/apt/archives/${pattern} .ci/apt-cache/ 2>/dev/null || true

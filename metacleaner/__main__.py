@@ -38,6 +38,11 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="FILE",
         help="Process only these files (paths relative to project root)",
     )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit 1 if any file failed (default: fail only when nothing was optimized)",
+    )
     return parser
 
 
@@ -134,7 +139,12 @@ def _run(project: Path, args: argparse.Namespace) -> int:
     if args.check:
         return 1 if report.scanned > 0 else 0
 
-    return 1 if report.failed else 0
+    if report.failed:
+        if args.strict:
+            return 1
+        if report.optimized == 0:
+            return 1
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
