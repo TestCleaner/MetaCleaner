@@ -2,6 +2,9 @@
 #   .github/workflows/optimize-media.yml
 #
 # Replace @ORG@ and @METACLEANER@ with your GitHub organization and repo name.
+#
+# Also append templates/metacleaner-gitignore to your project's .gitignore
+# (install-org-workflow.sh does this automatically).
 
 name: Optimize media
 

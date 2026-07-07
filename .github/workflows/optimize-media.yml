@@ -102,8 +102,8 @@ jobs:
         uses: actions/cache@v4
         id: cache-apt
         with:
-          path: .ci/apt-cache
-          key: ${{ runner.os }}-apt-metacleaner-v1
+          path: /home/runner/.cache/metacleaner-apt
+          key: ${{ runner.os }}-apt-metacleaner-v2
 
       - name: Cache npm
         if: steps.media.outputs.has_files == 'true'
@@ -115,9 +115,11 @@ jobs:
       - name: Install dependencies
         if: steps.media.outputs.has_files == 'true'
         shell: bash
+        env:
+          APT_CACHE_DIR: /home/runner/.cache/metacleaner-apt
         run: |
           set -euo pipefail
-          mkdir -p .ci/apt-cache
+          mkdir -p "$APT_CACHE_DIR"
 
           install_apt() {
             sudo apt-get update
@@ -135,7 +137,7 @@ jobs:
 
           save_apt_cache() {
             shopt -s nullglob
-            rm -f .ci/apt-cache/*.deb
+            rm -f "$APT_CACHE_DIR"/*.deb
             for pattern in \
               "libimage-exiftool-perl_*.deb" \
               "ffmpeg_*.deb" \
@@ -146,14 +148,14 @@ jobs:
               "libheif1_*.deb" \
               "mozjpeg_*.deb" \
               "libmozjpeg-progs_*.deb"; do
-              cp /var/cache/apt/archives/${pattern} .ci/apt-cache/ 2>/dev/null || true
+              cp /var/cache/apt/archives/${pattern} "$APT_CACHE_DIR"/ 2>/dev/null || true
             done
             shopt -u nullglob
           }
 
-          if [ "${{ steps.cache-apt.outputs.cache-hit }}" = "true" ] && compgen -G ".ci/apt-cache/*.deb" > /dev/null; then
+          if [ "${{ steps.cache-apt.outputs.cache-hit }}" = "true" ] && compgen -G "$APT_CACHE_DIR/*.deb" > /dev/null; then
             echo "Restoring apt packages from cache"
-            sudo dpkg -i .ci/apt-cache/*.deb || {
+            sudo dpkg -i "$APT_CACHE_DIR"/*.deb || {
               sudo apt-get update
               sudo apt-get install -fy
             }
@@ -178,8 +180,25 @@ jobs:
 
       - name: Commit optimized media
         if: steps.media.outputs.has_files == 'true'
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: ${{ inputs.commit_message }}
-          commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
-          branch: ${{ github.head_ref }}
+        shell: bash
+        env:
+          COMMIT_MESSAGE: ${{ inputs.commit_message }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          media_re='\.(jpe?g|png|webp|heic|heif|svg|mp4|mov|m4v|webm|mkv)$'
+          while IFS= read -r line; do
+            path="${line:3}"
+            [[ "$path" =~ $media_re ]] || continue
+            git add -- "$path"
+          done < <(git status --porcelain)
+
+          if git diff --cached --quiet; then
+            echo "No media changes to commit."
+            exit 0
+          fi
+
+          git commit -m "$COMMIT_MESSAGE"
+          git push

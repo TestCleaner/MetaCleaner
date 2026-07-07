@@ -1,0 +1,3 @@
+# MetaCleaner CI (do not commit runner artifacts)
+.ci/
+.metacleaner-tool/

@@ -13,6 +13,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 TEMPLATE="${ROOT_DIR}/templates/caller-workflow.yml"
+GITIGNORE_SNIPPET="${ROOT_DIR}/templates/metacleaner-gitignore"
 
 ORG="${1:-}"
 METACLEANER="${2:-MetaCleaner}"
@@ -33,6 +34,11 @@ fi
 
 if [[ ! -f "$TEMPLATE" ]]; then
   echo "Template not found: $TEMPLATE" >&2
+  exit 2
+fi
+
+if [[ ! -f "$GITIGNORE_SNIPPET" ]]; then
+  echo "Gitignore snippet not found: $GITIGNORE_SNIPPET" >&2
   exit 2
 fi
 
@@ -79,7 +85,16 @@ for repo in "${REPOS[@]}"; do
   mkdir -p .github/workflows
   printf '%s\n' "$WORKFLOW_CONTENT" > .github/workflows/optimize-media.yml
 
-  git add .github/workflows/optimize-media.yml
+  if [[ ! -f .gitignore ]]; then
+    touch .gitignore
+  fi
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" =~ ^# ]] && continue
+    grep -qxF "$line" .gitignore 2>/dev/null && continue
+    echo "$line" >> .gitignore
+  done < "$GITIGNORE_SNIPPET"
+
+  git add .github/workflows/optimize-media.yml .gitignore
   if git diff --cached --quiet; then
     echo "  Workflow already up to date, skipping."
     continue
