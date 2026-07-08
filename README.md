@@ -238,6 +238,7 @@ video_webm_cpu_used: 2  # 0 = лучше качество, 5 = быстрее
 # Общие настройки
 strip_metadata: true   # удалять метаданные
 skip_if_larger: true   # не заменять, если файл стал больше
+skip_app_icons: true   # не сжимать иконки приложений (см. ниже)
 subprocess_timeout: 300
 
 # Папки, которые полностью пропускаются при обходе
@@ -254,6 +255,12 @@ exclude_globs:
   - "**/test/**"
   - "**/tests/**"
   - "**/fixtures/**"
+
+# skip_app_icons: true (по умолчанию) пропускает иконки по соглашениям платформ:
+#   iOS/macOS: *.appiconset, *.launchimage, AppIcon/
+#   Android: mipmap-*, ic_launcher*, ic_launcher_foreground/background
+#   Flutter / RN / PWA: Icon-App-*, favicon*, apple-touch-icon*, playstore-icon*
+# Свои исключения добавляйте в exclude_globs. Отключить: skip_app_icons: false
 
 # Какие расширения обрабатывать
 extensions:
@@ -302,6 +309,7 @@ png_lossless: true   # нужен oxipng: brew install oxipng
 - HEIC конвертируется в `.jpg` — исходный `.heic` удаляется (учитывайте ссылки в проекте)
 - Временные файлы (`*.metacleaner.tmp*`) создаются рядом с оригиналом и удаляются после обработки
 - Служебные папки (`build`, `.git`, `node_modules`, `Pods` и др.) автоматически пропускаются
+- Иконки приложений (AppIcon, mipmap, ic_launcher и аналоги) **не сжимаются** по умолчанию (`skip_app_icons: true`) — lossy-сжатие может дать артефакты на мелких размерах
 
 ---
 

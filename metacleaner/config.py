@@ -46,6 +46,7 @@ class Config:
     video_webm_cpu_used: int = 2
     strip_metadata: bool = True
     skip_if_larger: bool = True
+    skip_app_icons: bool = True
     exclude_dirs: set[str] = field(default_factory=lambda: set(DEFAULT_EXCLUDE_DIRS))
     exclude_globs: list[str] = field(default_factory=list)
     extensions_images: set[str] = field(default_factory=lambda: set(IMAGE_EXTENSIONS))
@@ -90,6 +91,7 @@ def load_config(project_root: Path, config_path: Path | None = None) -> Config:
         "video_webm_cpu_used": 2,
         "strip_metadata": True,
         "skip_if_larger": True,
+        "skip_app_icons": True,
         "subprocess_timeout": 300,
         "exclude_dirs": sorted(DEFAULT_EXCLUDE_DIRS),
         "exclude_globs": [],
@@ -133,6 +135,7 @@ def load_config(project_root: Path, config_path: Path | None = None) -> Config:
         video_webm_cpu_used=max(0, min(5, int(data.get("video_webm_cpu_used", 2)))),
         strip_metadata=bool(data.get("strip_metadata", True)),
         skip_if_larger=bool(data.get("skip_if_larger", True)),
+        skip_app_icons=bool(data.get("skip_app_icons", True)),
         exclude_dirs=exclude_dirs,
         exclude_globs=list(data.get("exclude_globs") or []),
         extensions_images={ext.lower() if ext.startswith(".") else f".{ext.lower()}" for ext in extensions.get("images", IMAGE_EXTENSIONS)},

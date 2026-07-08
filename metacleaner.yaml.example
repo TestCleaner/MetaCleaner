@@ -13,6 +13,8 @@ video_webm_cpu_used: 2
 
 strip_metadata: true
 skip_if_larger: true
+# Skip launcher / app icons (iOS .appiconset, Android mipmap, ic_launcher*, etc.).
+skip_app_icons: true
 subprocess_timeout: 300
 
 exclude_dirs:

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import fnmatch
 import os
 from dataclasses import dataclass
 from pathlib import Path
 
 from metacleaner.config import Config
+from metacleaner.excludes import is_excluded_file
 
 
 @dataclass(frozen=True)
@@ -13,14 +13,6 @@ class MediaFile:
     path: Path
     relative: Path
     kind: str
-
-
-def _is_excluded_file(relative: Path, exclude_globs: list[str]) -> bool:
-    relative_posix = relative.as_posix()
-    for pattern in exclude_globs:
-        if fnmatch.fnmatch(relative_posix, pattern):
-            return True
-    return False
 
 
 def walk_media_files(project_root: Path, config: Config, *, images_only: bool = False, videos_only: bool = False) -> list[MediaFile]:
@@ -53,7 +45,7 @@ def walk_media_files(project_root: Path, config: Config, *, images_only: bool = 
                         continue
 
                     relative = path.relative_to(project_root)
-                    if _is_excluded_file(relative, config.exclude_globs):
+                    if is_excluded_file(relative, config):
                         continue
 
                     kind = config.media_kind(suffix)
@@ -105,7 +97,7 @@ def resolve_media_files(
         if suffix not in allowed:
             continue
 
-        if _is_excluded_file(relative, config.exclude_globs):
+        if is_excluded_file(relative, config):
             continue
 
         kind = config.media_kind(suffix)
