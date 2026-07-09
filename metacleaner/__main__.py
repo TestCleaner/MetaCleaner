@@ -96,7 +96,11 @@ def _run(project: Path, args: argparse.Namespace) -> int:
     found_extensions = {media.path.suffix.lower() for media in media_files}
     missing = missing_dependencies_for_extensions(found_extensions)
     if missing and not args.dry_run and not args.check:
-        names = ", ".join(dep.name for dep in missing)
+        parts = []
+        for dep in missing:
+            bins = "/".join(dep.binaries)
+            parts.append(f"{dep.name} ({bins})")
+        names = ", ".join(parts)
         print(f"Error: missing required tools: {names}", file=sys.stderr)
         print("Run with --doctor for details.", file=sys.stderr)
         return 2

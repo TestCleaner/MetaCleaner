@@ -103,7 +103,7 @@ jobs:
         id: cache-apt
         with:
           path: /home/runner/.cache/metacleaner-apt
-          key: ${{ runner.os }}-apt-metacleaner-v3
+          key: ${{ runner.os }}-apt-metacleaner-v4
 
       - name: Cache npm
         if: steps.media.outputs.has_files == 'true'
@@ -129,14 +129,8 @@ jobs:
               pngquant \
               webp \
               python3-pip \
-              libheif-examples
-            # mozjpeg is often unavailable in Ubuntu repos; libjpeg-turbo-progs provides cjpeg/djpeg.
-            sudo apt-get install -y mozjpeg 2>/dev/null \
-              || sudo apt-get install -y libmozjpeg-progs 2>/dev/null \
-              || true
-            if ! command -v cjpeg >/dev/null || ! command -v djpeg >/dev/null; then
-              sudo apt-get install -y libjpeg-turbo-progs
-            fi
+              libheif-examples \
+              libjpeg-turbo-progs
           }
 
           verify_tools() {
@@ -196,6 +190,13 @@ jobs:
           MEDIA_FILES: ${{ steps.media.outputs.files }}
         run: |
           set -euo pipefail
+          export PATH="/usr/bin:/usr/local/bin:${PATH}"
+          for bin in cjpeg djpeg; do
+            if ! command -v "$bin" >/dev/null; then
+              echo "Error: $bin not found before MetaCleaner run. Re-run the workflow after pushing latest MetaCleaner." >&2
+              exit 1
+            fi
+          done
           mapfile -t FILES <<< "${MEDIA_FILES}"$'\n'
           chmod +x .metacleaner-tool/metacleaner.sh
           .metacleaner-tool/metacleaner.sh . --files "${FILES[@]}" -j 4 --verbose
