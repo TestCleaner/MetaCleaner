@@ -103,7 +103,7 @@ jobs:
         id: cache-apt
         with:
           path: /home/runner/.cache/metacleaner-apt
-          key: ${{ runner.os }}-apt-metacleaner-v2
+          key: ${{ runner.os }}-apt-metacleaner-v3
 
       - name: Cache npm
         if: steps.media.outputs.has_files == 'true'
@@ -130,9 +130,24 @@ jobs:
               webp \
               python3-pip \
               libheif-examples
+            # mozjpeg is often unavailable in Ubuntu repos; libjpeg-turbo-progs provides cjpeg/djpeg.
             sudo apt-get install -y mozjpeg 2>/dev/null \
               || sudo apt-get install -y libmozjpeg-progs 2>/dev/null \
               || true
+            if ! command -v cjpeg >/dev/null || ! command -v djpeg >/dev/null; then
+              sudo apt-get install -y libjpeg-turbo-progs
+            fi
+          }
+
+          verify_tools() {
+            local missing=()
+            for bin in cjpeg djpeg pngquant cwebp ffmpeg; do
+              command -v "$bin" >/dev/null || missing+=("$bin")
+            done
+            if [ ${#missing[@]} -gt 0 ]; then
+              echo "Missing required tools after install: ${missing[*]}" >&2
+              exit 1
+            fi
           }
 
           save_apt_cache() {
@@ -147,7 +162,8 @@ jobs:
               "libheif-examples_*.deb" \
               "libheif1_*.deb" \
               "mozjpeg_*.deb" \
-              "libmozjpeg-progs_*.deb"; do
+              "libmozjpeg-progs_*.deb" \
+              "libjpeg-turbo-progs_*.deb"; do
               cp /var/cache/apt/archives/${pattern} "$APT_CACHE_DIR"/ 2>/dev/null || true
             done
             shopt -u nullglob
@@ -159,10 +175,16 @@ jobs:
               sudo apt-get update
               sudo apt-get install -fy
             }
+            if ! command -v cjpeg >/dev/null || ! command -v djpeg >/dev/null; then
+              sudo apt-get update
+              sudo apt-get install -y libjpeg-turbo-progs
+            fi
           else
             install_apt
             save_apt_cache
           fi
+
+          verify_tools
 
           pip install -r .metacleaner-tool/requirements.txt
           npm install -g svgo

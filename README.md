@@ -86,7 +86,9 @@ chmod +x metacleaner.sh
 ### Linux (Debian/Ubuntu)
 
 ```bash
-sudo apt install libimage-exiftool-perl ffmpeg mozjpeg pngquant webp svgo oxipng
+sudo apt install libimage-exiftool-perl ffmpeg pngquant webp svgo oxipng
+# JPEG: mozjpeg if available, otherwise libjpeg-turbo-progs (cjpeg/djpeg)
+sudo apt install mozjpeg || sudo apt install libjpeg-turbo-progs
 
 cd MetaCleaner
 python3 -m pip install -r requirements.txt

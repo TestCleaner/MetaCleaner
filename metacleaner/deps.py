@@ -13,7 +13,7 @@ class Dependency:
 
 
 DEPENDENCIES: tuple[Dependency, ...] = (
-    Dependency("mozjpeg", ("cjpeg", "djpeg", "mozjpeg"), "JPEG images"),
+    Dependency("mozjpeg", ("cjpeg", "djpeg", "mozjpeg"), "JPEG images (cjpeg/djpeg)"),
     Dependency("pngquant", ("pngquant",), "PNG images"),
     Dependency("cwebp", ("cwebp",), "WebP images"),
     Dependency("svgo", ("svgo",), "SVG files", optional=True),

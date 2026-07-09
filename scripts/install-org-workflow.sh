@@ -47,6 +47,11 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 2
 fi
 
+if ! gh auth status >/dev/null 2>&1; then
+  echo "Error: gh is not authenticated. Run: gh auth login" >&2
+  exit 2
+fi
+
 WORKFLOW_CONTENT="$(sed "s|@ORG@|${ORG}|g; s|@METACLEANER@|${METACLEANER}|g" "$TEMPLATE")"
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
@@ -56,7 +61,10 @@ echo "MetaCleaner repo: ${ORG}/${METACLEANER}"
 echo "Dry run: ${DRY_RUN}"
 echo ""
 
-mapfile -t REPOS < <(gh repo list "$ORG" --limit 1000 --json name -q '.[].name')
+REPOS=()
+while IFS= read -r repo; do
+  [[ -n "$repo" ]] && REPOS+=("$repo")
+done < <(gh repo list "$ORG" --limit 1000 --json name -q '.[].name')
 
 for repo in "${REPOS[@]}"; do
   if [[ "$repo" == "$METACLEANER" ]]; then
