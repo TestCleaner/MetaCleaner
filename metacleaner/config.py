@@ -31,9 +31,6 @@ IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"
 SVG_EXTENSIONS = frozenset({".svg"})
 VIDEO_EXTENSIONS = frozenset({".mp4", ".mov", ".m4v", ".webm", ".mkv"})
 
-ALL_MEDIA_EXTENSIONS = IMAGE_EXTENSIONS | SVG_EXTENSIONS | VIDEO_EXTENSIONS
-
-
 @dataclass
 class Config:
     jpeg_quality: int = 85

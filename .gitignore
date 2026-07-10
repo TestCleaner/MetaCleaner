@@ -3,3 +3,5 @@ __pycache__/
 *.metacleaner.tmp*
 .DS_Store
 .venv/
+.metacleaner.yaml
+uk_test_assistant_88/

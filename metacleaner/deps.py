@@ -15,9 +15,11 @@ class Dependency:
 DEPENDENCIES: tuple[Dependency, ...] = (
     Dependency("mozjpeg", ("cjpeg", "djpeg", "mozjpeg"), "JPEG images (cjpeg/djpeg)"),
     Dependency("pngquant", ("pngquant",), "PNG images"),
+    Dependency("oxipng", ("oxipng",), "PNG lossless (png_lossless: true)", optional=True),
     Dependency("cwebp", ("cwebp",), "WebP images"),
     Dependency("svgo", ("svgo",), "SVG files", optional=True),
     Dependency("ffmpeg", ("ffmpeg",), "video and HEIC files"),
+    Dependency("heif-convert", ("heif-convert",), "HEIC preferred converter", optional=True),
     Dependency("exiftool", ("exiftool",), "metadata fallback", optional=True),
 )
 

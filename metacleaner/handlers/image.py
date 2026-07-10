@@ -16,10 +16,9 @@ from metacleaner.report import FileResult
 
 
 def _jpeg_binary(name: str) -> str | None:
-    for candidate in (name,):
-        path = which_or_none(candidate)
-        if path:
-            return path
+    path = which_or_none(name)
+    if path:
+        return path
     if name == "cjpeg":
         return which_or_none("mozjpeg")
     return None
