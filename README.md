@@ -521,24 +521,6 @@ sudo apt install libjpeg-turbo-progs
 
 На macOS: `brew install mozjpeg`.
 
-### Артефакты (полосы) в градиентах PNG
-
-Поднимите `png_quality` до `"95-100"` или включите `png_lossless: true` (нужен `oxipng`).
-
-### Ошибка WebM: `Only VP8 or VP9 or AV1...`
-
-WebM не поддерживает H.264. MetaCleaner автоматически использует VP9 для `.webm`.
-
-### Ошибка FFmpeg: `Unable to choose an output format`
-
-Убедитесь, что используете актуальную версию MetaCleaner — временные файлы должны иметь расширение оригинала.
-
-### Удалить оставшиеся временные файлы
-
-```bash
-find /path/to/folder -name "*.metacleaner.tmp*" -delete
-```
-
 ### CI: workflow не запускается
 
 - Workflow должен быть в **default branch** (main) — закоммитьте и смержите
